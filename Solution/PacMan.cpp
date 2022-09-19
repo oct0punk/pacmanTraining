@@ -5,7 +5,17 @@
 #include <chrono>
 #include <algorithm>
 #include <math.h>
+#include <chrono>
+#include <ctime>
 
+double getTimeStamp() //retourne le temps actuel en seconde
+{
+	using namespace std;
+	using namespace std::chrono;
+	std::chrono::nanoseconds ns =
+		duration_cast<std::chrono::nanoseconds>(system_clock::now().time_since_epoch());
+	return ns.count() / 1000000000.0;
+}
 
 int main()
 {
@@ -16,15 +26,22 @@ int main()
 	pacman->cx = 19;
 	pacman->cy = 25;
 	pacman->rx = pacman->ry = .5f;
+
 	sf::CircleShape cGhost(10);
 	cGhost.setOrigin(10, 10);
 	cGhost.setFillColor(sf::Color::Red);
-	Ghost* g1 = new Ghost(new sf::CircleShape(cGhost), pacman);
+	Ghost* g1 = new Ghost(new sf::CircleShape(cGhost), pacman,	{
+			sf::Vector2i(37, 1),
+			sf::Vector2i(20, 1),
+			sf::Vector2i(20, 6),
+			sf::Vector2i(37, 6)									});
 	g1->cx = 1;
 	g1->cy = 1;
 	g1->rx = g1->ry = .5f;
 
 	sf::RenderWindow window(sf::VideoMode(1000,1000), "PacMan");
+	window.setFramerateLimit(60);
+	window.setVerticalSyncEnabled(true);
 	World* world = World::GetInstance();
 
 	world->Init(&window);
@@ -36,7 +53,6 @@ int main()
 
 	sf::Clock deltaClock;
 	while (window.isOpen()) {
-
 		sf::Event event;
 		while (window.pollEvent(event)) {
 			ImGui::SFML::ProcessEvent(event);
@@ -64,9 +80,18 @@ int main()
 
 		ImGui::SFML::Update(window, deltaClock.restart());
 		float dt = deltaClock.getElapsedTime().asSeconds();
+		
+
 		world->Update(dt);
 
 #pragma endregion
+
+		ImGui::Begin("Debug");
+		ImGui::Value("Time : ", dt);
+		ImGui::Value("DX : ", g1->dx);
+		ImGui::Value("DY : ", g1->dy);
+		ImGui::Value("size : ", (int)g1->nextPos.size());
+		ImGui::End();
 
 #pragma region RENDER
 
@@ -86,8 +111,8 @@ int main()
 		
 		ImGui::SFML::Render(window);
 		window.display();
-
 #pragma endregion
+
 	}
 	ImGui::SFML::Shutdown();
 	return 0;

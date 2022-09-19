@@ -70,22 +70,22 @@ void Character::Update(double dt) {
 // Move
 rx += dx * speed * dt;
 ry += dy * speed * dt;
-dist -= speed * dt;
-
-UpdatePathfinding();
 
 SyncSprite();
 }
 
-void Character::UpdatePathfinding()
+void Character::UpdatePathfinding(double dt)
 {
+	dist -= speed * dt;
 	// go to next target ?
-	if (nextPos.size() && dist <= 0) {
+	if (dist <= 0) {
+		rx = ry = .5f;
 		cx = nextPos.front().x;
 		cy = nextPos.front().y;
-		rx = ry = .5f;
-		nextPos.pop_front();
-		NextTarget();
+		if (nextPos.size()) {
+			nextPos.pop_front();
+			NextTarget();
+		}
 	}
 }
 
@@ -110,6 +110,9 @@ void Character::NextTarget() {
 		return;
 		// Stop movement
 	}
+
+	px = (cx + rx) * *cellSize;
+	py = (cy + ry) * *cellSize;
 
 	// Set next target position
 	target.x = (nextPos.front().x + .5f) * *cellSize;
@@ -138,41 +141,46 @@ void Player::Update(double dt) {
 				dy = desiredDir.y;
 			}
 
-		// Anticipate pacman's direction
-		auto iter = std::find(dij.vertices.begin(), dij.vertices.end(), sf::Vector2i(cx, cy));
-		if (iter != dij.vertices.end())
-		{
-			int index = iter - dij.vertices.begin();
-			Pole pole = dij.vertices.at(index);
-			lastCheckpoint = pole.pos;
-			sf::Vector2i direction(dx, dy);
-			if (direction == sf::Vector2i(1, 0)) {
-				if (pole.nRight.first)
-					nextCheckpoint = pole.nRight.second;
-				else
-					nextCheckpoint = pole.pos;
-			}
-			else if (direction == sf::Vector2i(-1, 0)) {
-				if (pole.nLeft.first)
-					nextCheckpoint = pole.nLeft.second;
-				else
-					nextCheckpoint = pole.pos;
-			}
-			else if (direction == sf::Vector2i(0, 1)) {
-				if (pole.nUp.first)
-					nextCheckpoint = pole.nUp.second;
-				else
-					nextCheckpoint = pole.pos;
-			}
-			else if (direction == sf::Vector2i(0, -1)) {
-				if (pole.nDown.first)
-					nextCheckpoint = pole.nDown.second;
-				else
-					nextCheckpoint = pole.pos;
-			}
-		}
 	}
 
+	auto iter = std::find(dij.vertices.begin(), dij.vertices.end(), sf::Vector2i(cx, cy));
+	if (iter != dij.vertices.end())
+	{
+		int index = iter - dij.vertices.begin();
+		Pole pole = dij.vertices.at(index);
+		lastCheckpoint = pole.pos;
+		if (sf::Vector2i(cx, cy) == sf::Vector2i(1, 1)) {
+			sf::Vector2i();
+		}
+
+		// Anticipate pacman's direction
+		sf::Vector2i direction(dx, dy);
+		if (direction == sf::Vector2i(1, 0)) {
+			if (pole.nRight.first)
+				nextCheckpoint = pole.nRight.second;
+			else
+				nextCheckpoint = pole.pos;
+		}
+		else if (direction == sf::Vector2i(-1, 0)) {
+			if (pole.nLeft.first)
+				nextCheckpoint = pole.nLeft.second;
+			else
+				nextCheckpoint = pole.pos;
+		}
+		else if (direction == sf::Vector2i(0, 1)) {
+			if (pole.nUp.first)
+				nextCheckpoint = pole.nUp.second;
+			else
+				nextCheckpoint = pole.pos;
+		}
+		else if (direction == sf::Vector2i(0, -1)) {
+			if (pole.nDown.first)
+				nextCheckpoint = pole.nDown.second;
+			else
+				nextCheckpoint = pole.pos;
+		}
+	}
+	
 	// Move
 	rx += dx * speed * dt;
 	ry += dy * speed * dt;
@@ -189,6 +197,7 @@ void Player::Update(double dt) {
 		if (dy > 0)
 			ry = clamp(ry, 0, .5f);
 	}
+
 
 	SyncSprite();
 }

@@ -133,22 +133,78 @@ void Dijkstra::compute(sf::Vector2i start) {
 }
 
 sf::Vector2i Dijkstra::FindNearestPole(sf::Vector2i cell) {
-	float minDistFromStart = INT32_MAX;
 	sf::Vector2i res;
-	for (auto v : vertices) {
-		float lenFromStart = sqrt((v.pos - cell).x * (v.pos - cell).x + (v.pos - cell).y * (v.pos - cell).y);
-		if (v == cell) {
-			return v.pos;
-			minDistFromStart = 0;
-			break;
+	float minDistFromStart = INT32_MAX;
+	// Left
+	for (int x = cell.x; x >  0; x--) {
+		if (World::GetInstance()->isColliding(x, cell.y)) break;
+		auto pos = std::find(vertices.begin(), vertices.end(), sf::Vector2i(x, cell.y));
+		if (pos != vertices.end()) {
+			float length = len(cell - sf::Vector2i(x, cell.y));
+			if (length < minDistFromStart) {
+				minDistFromStart = length;
+				res = sf::Vector2i(x, cell.y);
+				break;
+			}
 		}
-		else if (v.pos != cell && minDistFromStart > lenFromStart)
-		{
-			minDistFromStart = lenFromStart;
-			res = v.pos;
+	}
+	// Right
+	for (int x = cell.x; x < 40; x++) {
+		auto pos = std::find(vertices.begin(), vertices.end(), sf::Vector2i(x, cell.y));
+		if (World::GetInstance()->isColliding(x, cell.y)) break;
+		if (pos != vertices.end()) {
+			float length = len(cell - sf::Vector2i(x, cell.y));
+			if (length < minDistFromStart) {
+				minDistFromStart = length;
+				res = sf::Vector2i(x, cell.y);
+				break;
+			}
+		}
+	}
+	// Up
+	for (int y = cell.y; y >  0; y--) {
+		auto pos = std::find(vertices.begin(), vertices.end(), sf::Vector2i(cell.x, y));
+		if (World::GetInstance()->isColliding(cell.x, y)) break;
+		if (pos != vertices.end()) {
+			float length = len(cell - sf::Vector2i(cell.x, y));
+			if (length < minDistFromStart) {
+				minDistFromStart = length;
+				res = sf::Vector2i(cell.x, y);
+				break;
+			}
+		}
+	}
+	// Down
+	for (int y = cell.y; y < 40; y++) {
+		auto pos = std::find(vertices.begin(), vertices.end(), sf::Vector2i(cell.x, y));
+		if (World::GetInstance()->isColliding(cell.x, y)) break;
+		if (pos != vertices.end()) {
+			float length = len(cell - sf::Vector2i(cell.x, y));
+			if (length < minDistFromStart) {
+				minDistFromStart = length;
+				res = sf::Vector2i(cell.x, y);
+				break;
+			}
 		}
 	}
 	return res;
+
+	//float min	DistFromStart = INT32_MAX;
+	//sf::Vector2i res
+	//for (auto v : vertices) {
+	//	float lenFromStart = sqrt((v.pos - cell).x * (v.pos - cell).x + (v.pos - cell).y * (v.pos - cell).y);
+	//	if (v == cell) {
+	//		return v.pos;
+	//		minDistFromStart = 0;
+	//		break;
+	//	}
+	//	else if (v.pos != cell && minDistFromStart > lenFromStart)
+	//	{
+	//		minDistFromStart = lenFromStart;
+	//		res = v.pos;
+	//	}
+	//}
+	// return res;
 }
 
 std::vector<sf::Vector2i> Dijkstra::FindPath(sf::Vector2i start, sf::Vector2i end) {	
@@ -156,6 +212,11 @@ std::vector<sf::Vector2i> Dijkstra::FindPath(sf::Vector2i start, sf::Vector2i en
 	sf::Vector2i endCell	= FindNearestPole(end);
 	compute(startCell);				// Build Dijkstra
 	BuildPath(startCell, endCell);	// Construct Path from endCell to startCell
+	
+	if (start != startCell)
+		path.insert(path.begin(), start);
+	if (end != endCell)
+		path.push_back(end);
 	return path;
 }
 
