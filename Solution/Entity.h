@@ -24,26 +24,32 @@ public:
 	float ry = 0;
 
 	float px = 0;
-	float py = 0;
+	float py = 0;	
 
-	
 
 	Entity(sf::Shape* shape);
 
+	// Called when added to world's update
 	virtual void Init();
 
+	// Called after GameOver
+	virtual void Reset() {	}
+
+	// Called every frame
 	virtual void Update(double dt);
-	void		Draw(sf::RenderWindow* win);
 
+	// Render shape
+	virtual void Draw(sf::RenderWindow* win);
+
+	// Update px and py using cx, cy, rx, ry. Then update shape's position.
 	void SyncSprite();
-
 };
 
 class Character : public Entity {
 protected:
 	sf::Vector2f target;
 	float dist = 0;
-	int speed = 1000;
+	float speed = 2000.0f;
 	
 public:
 	float dx = 0;
@@ -54,13 +60,19 @@ public:
 
 	Character(sf::Shape* shape);
 
-	virtual void Update(double dt);
+	// Called every frame
+	void Update(double dt);
 
+	// Called in Update
 	virtual void UpdatePathfinding(double dt);
 
-	// PATHFINDING
-	void GoTo(sf::Vector2i destination);
+	// Ask the character to reach destination
+	virtual void GoTo(sf::Vector2i destination);
+
+	// Reach each elements in the order
 	virtual void SetPath(std::vector<sf::Vector2i> pathfinding);
+
+	// Auto change direction for pathfinding
 	void NextTarget();
 };
 
@@ -70,13 +82,16 @@ public:
 	sf::Vector2i nextCheckpoint;
 	sf::Vector2i desiredDir;
 
-	Player(sf::Shape* shape) : Character(shape) {
-		dx = 1;
-		dy = 0;
-	}
+	bool* drawPrediction = new bool(false);
+	bool alive = true;
+
+	Player(sf::Shape* shape);
 	
 	void Update(double dt);
+	void Draw(sf::RenderWindow* win);
+	void Reset();
 };
+
 
 enum GhostState
 {
@@ -88,7 +103,8 @@ enum GhostState
 class Ghost : public Character {
 protected:
 	Player* p = nullptr;
-	float time = 7.0f;
+	float updatePathTime = 1.0f;
+	float updatePathTimeRate = 1.0f;
 	float initialSpeed;
 	GhostState state;
 	void (Ghost::* updatePtr)(double);
@@ -98,71 +114,52 @@ protected:
 
 
 public:
-	Ghost(sf::Shape* shape, Player* p, std::vector<sf::Vector2i> scatPath) : Character(shape) {
-		initialSpeed = speed;
-		this->p = p;
-		scatterPath = scatPath;
-		ChangeFSMState(GhostState::Chase);
-	}
+	float time = 7.0f;
+	bool* drawDestination = new bool(false);
 
-	void ChangeFSMState(GhostState newState) {
-		nextPos.clear();
-		dx = dy = 0;
-		rx = ry = .5f;
-		switch (newState)
-		{
-		case Chase:
-			time = 7.0f;
-			updatePtr = &Ghost::ChaseUpdate;
-			break;
-		case Scatter:
-			time = 5.0f;
-			scattering = false;
-			updatePtr = &Ghost::ScatterUpdate;
-			break;
-		case Frightened:
-			break;
-		default:
-			break;
-		}
-	}
+	Ghost(sf::Shape* shape, Player* p, std::vector<sf::Vector2i> scatPath);
 
-	void UpdatePathfinding(double dt) {
-		if (!nextPos.size())
-			ChasePacman();
-		Character::UpdatePathfinding(dt);
-	}
-	void Update(double dt) {
-		time -= dt * 200.0f;
-		std::cout << time;
-		std::cout << "\n";
-		(this->*updatePtr)(dt);
-	}
-	void ChaseUpdate(double dt) {
-		UpdatePathfinding(dt);
-		Character::Update(dt);
-		if (time < 0)
-			ChangeFSMState(GhostState::Scatter);
-	}
-	void ScatterUpdate(double dt) {
-		if (!scattering) {
-			scattering = true;
-			GoTo(scatterPath.front());
-		}
-		if (nextPos.empty()) {
-			for (auto s : scatterPath)
-				nextPos.push_back(s);
-			NextTarget();
-		}
-		
-		UpdatePathfinding(dt);
-		Character::Update(dt);
-		if (time < 0)
-			ChangeFSMState(GhostState::Chase);
-	}
+	// Change IAstate from current GhostState to newState
+	void ChangeFSMState(GhostState newState);
 
-	virtual void ChasePacman() {
-		GoTo(sf::Vector2i(p->cx, p->cy));
-	}
+	void Reset();
 
+	void UpdatePathfinding(double dt);
+	void Update(double dt);
+	void ChaseUpdate(double dt);
+	void ScatterUpdate(double dt);
+
+	virtual void ChasePacman();
+	bool CollideWithPacman();
+
+	void Draw(sf::RenderWindow* win);
+};
+
+
+class Pinky : public Ghost {
+
+public:
+	Pinky(sf::Shape* spr, Player* pacman, std::vector<sf::Vector2i> scatPath);
+
+	void ChasePacman();
+};
+
+class Inky : public Ghost {
+	Ghost* blinky;
+	sf::Vector2i originalCell;
+	sf::Vector2i correctedCell;
+public:
+	bool* drawCellCorrection = new bool(false);
+
+	Inky(sf::Shape* spr, Player* pacman, Ghost* blinky, std::vector<sf::Vector2i> scatPath);
+
+	void ChasePacman();
+	void Draw(sf::RenderWindow* win);
+};
+
+class Clyde : public Ghost {
+public:
+	Clyde(sf::Shape* spr, Player* pacman, std::vector<sf::Vector2i> scatPath);
+
+	void ChasePacman();
 };

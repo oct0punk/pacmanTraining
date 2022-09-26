@@ -48,9 +48,15 @@ class Dijkstra {
 public:
 	std::vector<Pole> vertices;
 
+	// Procedurally set all poles neighbours
 	void Neighbourhood();
-
-	sf::Vector2i FindNearestPole(sf::Vector2i cell);
+	
+	// Find the nearest pole at up, down, left or right
+	Pole FindNearestNeighbourPole(sf::Vector2i cell);
+	
+	// Build path from start's nearest pole to end's nearest pole 
 	std::vector<sf::Vector2i> FindPath(sf::Vector2i start, sf::Vector2i end);
+
+	// Set dijkstra's path from endCell to startCell
 	void BuildPath(sf::Vector2i& endCell, sf::Vector2i& startCell);
 };

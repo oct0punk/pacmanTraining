@@ -132,8 +132,8 @@ void Dijkstra::compute(sf::Vector2i start) {
 
 }
 
-sf::Vector2i Dijkstra::FindNearestPole(sf::Vector2i cell) {
-	sf::Vector2i res;
+Pole Dijkstra::FindNearestNeighbourPole(sf::Vector2i cell) {
+	Pole res = vertices.at(0);
 	float minDistFromStart = INT32_MAX;
 	// Left
 	for (int x = cell.x; x >  0; x--) {
@@ -143,7 +143,7 @@ sf::Vector2i Dijkstra::FindNearestPole(sf::Vector2i cell) {
 			float length = len(cell - sf::Vector2i(x, cell.y));
 			if (length < minDistFromStart) {
 				minDistFromStart = length;
-				res = sf::Vector2i(x, cell.y);
+				res = vertices.at(pos - vertices.begin());
 				break;
 			}
 		}
@@ -156,7 +156,7 @@ sf::Vector2i Dijkstra::FindNearestPole(sf::Vector2i cell) {
 			float length = len(cell - sf::Vector2i(x, cell.y));
 			if (length < minDistFromStart) {
 				minDistFromStart = length;
-				res = sf::Vector2i(x, cell.y);
+				res = vertices.at(pos - vertices.begin());
 				break;
 			}
 		}
@@ -169,7 +169,7 @@ sf::Vector2i Dijkstra::FindNearestPole(sf::Vector2i cell) {
 			float length = len(cell - sf::Vector2i(cell.x, y));
 			if (length < minDistFromStart) {
 				minDistFromStart = length;
-				res = sf::Vector2i(cell.x, y);
+				res = vertices.at(pos - vertices.begin());
 				break;
 			}
 		}
@@ -182,34 +182,18 @@ sf::Vector2i Dijkstra::FindNearestPole(sf::Vector2i cell) {
 			float length = len(cell - sf::Vector2i(cell.x, y));
 			if (length < minDistFromStart) {
 				minDistFromStart = length;
-				res = sf::Vector2i(cell.x, y);
+				res = vertices.at(pos - vertices.begin());
 				break;
 			}
 		}
-	}
-	return res;
+	}	
 
-	//float min	DistFromStart = INT32_MAX;
-	//sf::Vector2i res
-	//for (auto v : vertices) {
-	//	float lenFromStart = sqrt((v.pos - cell).x * (v.pos - cell).x + (v.pos - cell).y * (v.pos - cell).y);
-	//	if (v == cell) {
-	//		return v.pos;
-	//		minDistFromStart = 0;
-	//		break;
-	//	}
-	//	else if (v.pos != cell && minDistFromStart > lenFromStart)
-	//	{
-	//		minDistFromStart = lenFromStart;
-	//		res = v.pos;
-	//	}
-	//}
-	// return res;
+	return res;	
 }
 
 std::vector<sf::Vector2i> Dijkstra::FindPath(sf::Vector2i start, sf::Vector2i end) {	
-	sf::Vector2i startCell	= FindNearestPole(start);
-	sf::Vector2i endCell	= FindNearestPole(end);
+	sf::Vector2i startCell	= FindNearestNeighbourPole(start).pos;
+	sf::Vector2i endCell	= FindNearestNeighbourPole(end).pos;
 	compute(startCell);				// Build Dijkstra
 	BuildPath(startCell, endCell);	// Construct Path from endCell to startCell
 	

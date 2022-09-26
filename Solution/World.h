@@ -22,12 +22,15 @@ private:
 	std::vector<sf::Vector2i> blocks;
 	std::vector<sf::Vector2i> poles;
 
+public:
 	bool* drawLines = new bool(false);
 	bool* drawPoints = new bool(false);
+	bool* drawRightNeighbour = new bool(false);
+	bool* drawLeftNeighbour = new bool(false);
+	bool* drawDownNeighbour = new bool(false);
+	bool* drawUpNeighbour = new bool(false);
 
-	float bombTimer = 1;
 
-public:
 	Dijkstra dijkstra;
 	int* cellSize = new int(25);
 
@@ -35,51 +38,35 @@ public:
 
 	void LoadMap();
 
+	// Init once, render and update an entity at every frame
 	void AddEntity(Entity* e);
-	void RemoveEntity(Entity* e) {
-		auto iterator = std::find(entities.begin(), entities.end(), e);
-		if (iterator != entities.end())
-			entities.erase(iterator);
-	}
 
+	// Remove an entity for the update and the rendering
+	void RemoveEntity(Entity* e);
+
+	// Render a wall and collide at pos
 	void AddWall(sf::Vector2i pos);
 
+	// Resize cells size
 	void ResizeCells(int newSize);
 
-
+	// Called every frame. Update all entities.
 	void Update(double dt);
+
+	// Called at collision between player and ghost
+	void GameOver();
 
 	bool isColliding(int cx, int cy);
 
-#pragma region Rendering
+	sf::Vector2i FindNearestCorrectCell(sf::Vector2i vec);
 
-	void DrawMap(sf::RenderWindow* win) {		
-		if (*drawLines)
-			win->draw(lines);
-		if (*drawPoints)
-			win->draw(points);
-	}
+	// RENDERING
 
-	void DrawWalls(sf::RenderWindow* win) {
-		for (auto w : blocks) {			
-			sf::RectangleShape rect(*block);
-			rect.setPosition(sf::Vector2f(w.x * *cellSize, w.y * *cellSize));
-			win->draw(rect);
-		}
-		for (auto w : poles) {
-			sf::RectangleShape rect(*pole);
-			rect.setPosition(sf::Vector2f(w.x * *cellSize, w.y * *cellSize));
-			win->draw(rect);
-		}
-	}
-
-	
-
+	void DrawMap(sf::RenderWindow* win);
+	void DrawWalls(sf::RenderWindow* win);
 	void Draw(sf::RenderWindow* win);
 
-#pragma endregion
-
+	// Singleton
 	static World* GetInstance();
-
 };
 

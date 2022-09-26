@@ -26,7 +26,10 @@ sf::VertexArray World::GenerateMapGrid() {
 	return points;
 }
 
+
+// Does not init entities (call "AddEntity" after)
 void World::Init(sf::RenderWindow* window) {
+	// set block's properties
 	block = new sf::RectangleShape(sf::Vector2f(*cellSize, *cellSize));
 	block->setFillColor(sf::Color::Transparent);
 	block->setOutlineColor(sf::Color::Cyan);
@@ -42,10 +45,11 @@ void World::Init(sf::RenderWindow* window) {
 
 	win = window;
 
-
 	LoadMap();
 }
 
+
+// Generate Pacman's map
 void World::LoadMap()
 {
 	dijkstra.vertices.clear();
@@ -56,6 +60,7 @@ void World::LoadMap()
 	while (!feof(f)) {
 		fread(buffer, sizeof(char), 42, f);
 		for (int x = 0; x < 40; x++) {
+			// Replace by switch on buffer[x]
 			bool isWall =
 				buffer[x] == (char)*"B";
 			if (isWall) {
@@ -78,13 +83,19 @@ void World::AddEntity(Entity* e) {
 	e->cellSize = cellSize;
 	e->Init();	
 	Character* c = (Character*)e;
-	if (c) c->dij = dijkstra;		
+	if (c) c->dij = dijkstra;
+}
+
+void World::RemoveEntity(Entity* e) {
+	auto iterator = std::find(entities.begin(), entities.end(), e);
+	if (iterator != entities.end())
+		entities.erase(iterator);
 }
 
 
 void World::AddWall(sf::Vector2i pos) {
 	if (!isColliding(pos.x, pos.y)) {
-		blocks.push_back(sf::Vector2i(pos.x, pos.y));			// Render a block
+		blocks.push_back(sf::Vector2i(pos.x, pos.y));
 		points = GenerateMapOrigins();
 	}
 }
@@ -126,6 +137,12 @@ void World::Update(double dt) {
 	ImGui::End();
 }
 
+void World::GameOver() {
+	for (auto e : entities)
+		e->Reset();
+}
+
+// Return true if there is a collider at sf::Vector2i(cx, cy); else return false
 bool World::isColliding(int cx, int cy) {
 	if (cx < 0) return false;
 	if (cy < 0) return false;
@@ -139,17 +156,136 @@ bool World::isColliding(int cx, int cy) {
 	return false;
 }
 
+// Find the nearest cell without collider
+sf::Vector2i World::FindNearestCorrectCell(sf::Vector2i vec) {
+	vec.x = clamp(vec.x, 1, 37);
+	vec.y = clamp(vec.y, 1, 37);
+	int size = 0;
+	while (true) {
+		for (int x = vec.x - size; x < vec.x + size; x++) {
+			if (x > 37 || x < 1) continue;															
+			sf::Vector2i res(x, vec.y + size);														
+			if (!isColliding(res.x, res.y)) return res;												//			 1 --> 
+		}																							//		    ________
+		for (int y = vec.y + size; y > vec.y - size; y--) {											//	   ^  |	  size	 |  2
+			if (y > 37 || y < 1) continue;															//	   |  |	 _|__|_  |  
+			sf::Vector2i res(vec.x + size, y);														//	   |  |	 _|__|_  |  |
+			if (!isColliding(res.x, res.y)) return res;												//		  |	  |  |   |  |
+		}																							//		4 |__________|  V
+		for (int x = vec.x + size; x > vec.x - size; x--) {											//			  <-- 3
+			if (x > 37 || x < 1) continue;															
+			sf::Vector2i res(x, vec.y - size);														// Size++ after each loop
+			if (!isColliding(res.x, res.y)) return res;												
+		}																							
+		for (int y = vec.y - size; y > vec.y + size - 1; y--) {										
+			if (y > 37 || y < 1) continue;															
+			sf::Vector2i res(vec.x - size, y);
+			if (!isColliding(res.x, res.y)) return res;
+		}
+		size++;
+	}
+}
+
 void World::Draw(sf::RenderWindow* win) {
 	DrawMap(win);
 	DrawWalls(win);
 
 	// Draw Entities
-	for (auto e : entities) {
+	for (auto e : entities)
 		e->Draw(win);
-	}
 
 	sf::VertexArray arr;
 	arr.setPrimitiveType(sf::PrimitiveType::LinesStrip);
+}
+
+void World::DrawMap(sf::RenderWindow* win) {
+	if (*drawLines)
+		win->draw(lines);
+	if (*drawPoints)
+		win->draw(points);
+}
+
+void World::DrawWalls(sf::RenderWindow* win) {
+	for (auto w : blocks) {
+		sf::RectangleShape rect(*block);
+		rect.setPosition(sf::Vector2f(w.x * *cellSize, w.y * *cellSize));
+		win->draw(rect);
+	}
+	for (auto w : poles) {
+		sf::RectangleShape rect(*pole);
+		rect.setPosition(sf::Vector2f(w.x * *cellSize, w.y * *cellSize));
+		win->draw(rect);
+	}
+
+	if (*drawRightNeighbour) {
+		sf::VertexArray arr;
+		arr.setPrimitiveType(sf::PrimitiveType::Lines);
+		for (auto p : dijkstra.vertices) {
+			if (!p.nRight.first) continue;
+			sf::Vertex v;
+			v.position.x = (p.pos.x + .5f) * *cellSize;
+			v.position.y = (p.pos.y + .5f) * *cellSize;
+			v.color = sf::Color::Transparent;
+			arr.append(v);
+			v.position.x = (p.nRight.second.x + .5f) * *cellSize;
+			v.position.y = (p.nRight.second.y + .5f) * *cellSize;
+			v.color = sf::Color::White;
+			arr.append(v);
+		}
+		win->draw(arr);
+	}
+	if (*drawLeftNeighbour) {
+		sf::VertexArray arr;
+		arr.setPrimitiveType(sf::PrimitiveType::Lines);
+		for (auto p : dijkstra.vertices) {
+			if (!p.nLeft.first) continue;
+			sf::Vertex v;
+			v.position.x = (p.pos.x + .5f) * *cellSize;
+			v.position.y = (p.pos.y + .5f) * *cellSize;
+			v.color = sf::Color::Transparent;
+			arr.append(v);
+			v.position.x = (p.nLeft.second.x + .5f) * *cellSize;
+			v.position.y = (p.nLeft.second.y + .5f) * *cellSize;
+			v.color = sf::Color::White;
+			arr.append(v);
+		}
+		win->draw(arr);
+	}
+	if (*drawUpNeighbour) {
+		sf::VertexArray arr;
+		arr.setPrimitiveType(sf::PrimitiveType::Lines);
+		for (auto p : dijkstra.vertices) {
+			if (!p.nUp.first) continue;
+			sf::Vertex v;
+			v.position.x = (p.pos.x + .5f) * *cellSize;
+			v.position.y = (p.pos.y + .5f) * *cellSize;
+			v.color = sf::Color::Transparent;
+			arr.append(v);
+			v.position.x = (p.nUp.second.x + .5f) * *cellSize;
+			v.position.y = (p.nUp.second.y + .5f) * *cellSize;
+			v.color = sf::Color::White;
+			arr.append(v);
+		}
+		win->draw(arr);
+	}
+	if (*drawDownNeighbour) {
+		sf::VertexArray arr;
+		arr.setPrimitiveType(sf::PrimitiveType::Lines);
+		for (auto p : dijkstra.vertices) {
+			if (!p.nDown.first) continue;
+			sf::Vertex v;
+			v.position.x = (p.pos.x + .5f) * *cellSize;
+			v.position.y = (p.pos.y + .5f) * *cellSize;
+			v.color = sf::Color::Transparent;
+			arr.append(v);
+			v.position.x = (p.nDown.second.x + .5f) * *cellSize;
+			v.position.y = (p.nDown.second.y + .5f) * *cellSize;
+			v.color = sf::Color::White;
+			arr.append(v);
+		}
+		win->draw(arr);
+	}
+
 }
 
 World* World::GetInstance() {
@@ -161,5 +297,3 @@ World* World::GetInstance() {
 		return w;
 	}
 }
-
-

@@ -2,20 +2,7 @@
 #include <SFML/Graphics.hpp>
 #include "World.h"
 #include <iostream>
-#include <chrono>
-#include <algorithm>
-#include <math.h>
-#include <chrono>
-#include <ctime>
 
-double getTimeStamp() //retourne le temps actuel en seconde
-{
-	using namespace std;
-	using namespace std::chrono;
-	std::chrono::nanoseconds ns =
-		duration_cast<std::chrono::nanoseconds>(system_clock::now().time_since_epoch());
-	return ns.count() / 1000000000.0;
-}
 
 int main()
 {
@@ -30,14 +17,48 @@ int main()
 	sf::CircleShape cGhost(10);
 	cGhost.setOrigin(10, 10);
 	cGhost.setFillColor(sf::Color::Red);
-	Ghost* g1 = new Ghost(new sf::CircleShape(cGhost), pacman,	{
+	Ghost* blinky = new Ghost(new sf::CircleShape(cGhost), pacman,	{
 			sf::Vector2i(37, 1),
 			sf::Vector2i(20, 1),
 			sf::Vector2i(20, 6),
 			sf::Vector2i(37, 6)									});
-	g1->cx = 1;
-	g1->cy = 1;
-	g1->rx = g1->ry = .5f;
+	blinky->cx = 37;
+	blinky->cy = 1;
+	blinky->rx = blinky->ry = .5f;
+
+	cGhost.setFillColor(sf::Color::Magenta);
+	Pinky* pinky = new Pinky(new sf::CircleShape(cGhost), pacman, { 
+		sf::Vector2i(1, 1), 
+		sf::Vector2i(1, 6), 
+		sf::Vector2i(9, 6), 
+		sf::Vector2i(9, 1),										});
+	pinky->cx = 1;
+	pinky->cy = 1;
+	pinky->rx = pinky->ry = .5f;
+
+	cGhost.setFillColor(sf::Color(255, 200, 0));
+	Clyde* clyde = new Clyde(new sf::CircleShape(cGhost), pacman, {
+		sf::Vector2i(19, 15),
+		sf::Vector2i(13, 15),
+		sf::Vector2i(13, 23),
+		sf::Vector2i(19, 23),
+		});
+	clyde->cx = 1;
+	clyde->cy = 38;
+
+
+	cGhost.setFillColor(sf::Color::Blue);
+	cGhost.setOutlineThickness(2);
+	Inky* inky = new Inky(new sf::CircleShape(cGhost), pacman, blinky,	{
+		sf::Vector2i(37, 38),
+		sf::Vector2i(37, 31),
+		sf::Vector2i(32, 31),
+		sf::Vector2i(32, 35),
+		sf::Vector2i(21, 35),
+		sf::Vector2i(21, 38),
+		});
+	inky->cx = 37;
+	inky->cy = 38;
 
 	sf::RenderWindow window(sf::VideoMode(1000,1000), "PacMan");
 	window.setFramerateLimit(60);
@@ -46,7 +67,10 @@ int main()
 
 	world->Init(&window);
 	world->AddEntity(pacman);
-	world->AddEntity(g1);
+	world->AddEntity(blinky);
+	world->AddEntity(pinky);
+	world->AddEntity(inky);
+	world->AddEntity(clyde);
 
 	ImGui::SFML::Init(window);
 	int* cellSize = world->cellSize;
@@ -74,40 +98,39 @@ int main()
 				pacman->desiredDir.x = 0;
 				pacman->desiredDir.y = -1;
 			}
+			if (event.type == event.KeyPressed && sf::Keyboard::isKeyPressed(sf::Keyboard::Space)) {
+				std::cout << pacman->cx;
+				std::cout << " - ";
+				std::cout << pacman->cy;
+				std::cout << "\n";
+			}
 		}
 
 #pragma region UPDATE
 
 		ImGui::SFML::Update(window, deltaClock.restart());
 		float dt = deltaClock.getElapsedTime().asSeconds();
-		
+
+		ImGui::Begin("Debug");
+		ImGui::Checkbox("Player's prediction", pacman->drawPrediction);
+		ImGui::Checkbox("Inky's correction", inky->drawCellCorrection);
+		ImGui::Checkbox("Clyde's destination", clyde->drawDestination);
+		ImGui::Checkbox("Right neighbour", world->drawRightNeighbour);
+		ImGui::Checkbox("Left neighbour", world->drawLeftNeighbour);
+		ImGui::Checkbox("Up neighbour", world->drawUpNeighbour);
+		ImGui::Checkbox("Down neighbour", world->drawDownNeighbour);
+		ImGui::End();
 
 		world->Update(dt);
 
 #pragma endregion
 
-		ImGui::Begin("Debug");
-		ImGui::Value("Time : ", dt);
-		ImGui::Value("DX : ", g1->dx);
-		ImGui::Value("DY : ", g1->dy);
-		ImGui::Value("size : ", (int)g1->nextPos.size());
-		ImGui::End();
 
 #pragma region RENDER
 
 		window.clear();
 		world->Draw(&window);
 
-		// Pathfinding
-		// sf::VertexArray dijkstraArr;
-		// dijkstraArr.setPrimitiveType(sf::PrimitiveType::Lines);
-		// for (auto s : g1->nextPos) {
-		// 	sf::Vector2f first((s.x + .5f) * *cellSize, (s.y + .5f) * *cellSize);
-		// 	sf::Vertex v1(first);
-		// 	v1.color = sf::Color(255, 255, 0);
-		// 	dijkstraArr.append(v1);
-		// }
-		// window.draw(dijkstraArr);
 		
 		ImGui::SFML::Render(window);
 		window.display();
